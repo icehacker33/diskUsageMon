@@ -1,0 +1,34 @@
+#!/bin/bash
+#
+# Date:   2014-05-14
+# Author: Daniel Zapico
+# Desc:   diskUsageMon.sh properties file
+#_____________________________________________________
+
+# Debugging mode
+# Activated ---> 1
+# Deactivated -> 0
+DEBUGMODE="1"
+
+# Output directory
+OUTPUTDIR="$TOOLDIR/output"
+
+# Logs directory
+LOGS="$TOOLDIR/logs"
+
+# Log file extension
+LOGEXT="log"
+
+# Log filename patter: sname.datentime.logext
+LOGFILE="$LOGS/$(echo $SNAME | awk 'BEGIN{datentime="'$(echo $DATENTIME)'"; ext="'$(echo $LOGEXT)'"}{split($1,vec,".");print vec[1]"."datentime"."ext}')"
+
+# Email subject
+EMAILSUBJECT="$USER@$HOSTNAME: $SNAME Storage Warning!"
+
+# Email Body
+EMAILBODYHEADER="This email has been sent by $USER@$HOSTNAME:$SDIR/$SNAME"
+
+# Email distribution list
+DISTLIST="raspice33@gmail.com"
+
+FSSIZEWARNING="75"

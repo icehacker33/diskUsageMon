@@ -1,0 +1,148 @@
+#
+# Date:   2014-06-13
+# Author: Daniel Zapico
+# Desc:   diskUsageMon.sh auxiliary functions
+#_____________________________________________________
+
+_Print2Log()
+{
+    if [[ "$VERBOSE" == "1" || "$DEBUG" == "1" ]]; then
+      echo "$(date +"*** "%Y"-"%m"-"%d"   "%H":"%M":"%S" ***")   $@" | tee -a "$LOGFILE"
+    fi
+}
+
+_PrintError2Log()
+{
+    if [[ "$VERBOSE" == "1" || "$DEBUG" == "1" ]]; then
+      echo "$(date +"*** "%Y"-"%m"-"%d"   "%H":"%M":"%S" ***")   ERROR: $@" | tee -a "$LOGFILE"
+    fi
+}
+
+_PrintWarning2Log()
+{
+    if [[ "$VERBOSE" == "1" || "$DEBUG" == "1" ]]; then
+      echo "$(date +"*** "%Y"-"%m"-"%d"   "%H":"%M":"%S" ***")   WARNING: $@" | tee -a "$LOGFILE"
+    fi
+}
+
+_PrintDebug()
+{
+    if [[ "$DEBUG" == "1" ]];then
+        _Print2Log "DEBUG: $@" | tee -a "$LOGFILE"
+    fi
+}
+
+_Exit()
+{
+    if [[ "$1" == "" ]]; then
+      _PrintError2Log "Empty exit code!"
+      exit "$EMPTYEXITCODE"
+    fi
+
+    _PrintDebug "Exiting with code $1"
+    exit $1
+}
+
+_Usage()
+{
+cat << EOF
+Usage: $SNAME [OPTIONS]
+
+OPTIONS:
+  -h show this help
+  -a activate email alert
+  -e <email> override default email address
+  -d debugging mode
+  -v verbose mode
+EOF
+}
+
+_ParseInputParams()
+{
+MODE=""
+while getopts ":e:havd" OPTION; do
+      case "$OPTION" in
+         h)
+           _Usage
+           _Exit "$DEFAULTEXITCODE"
+           ;;
+         v)
+           VERBOSE="1"
+           ;;
+         d)
+           DEBUG="1"
+           ;;
+         a)
+	   VERBOSE="1"
+	   SENDALERTEMAIL="1"
+	   ;;
+	 e)
+	   SENDALERTEMAIL="1"
+	   DISTLISTOVRRIDE="1"
+	   DISTLIST="$OPTARG"
+	   ;;
+	\?)
+           _Usage
+           _Exit "$WRONGUSAGE"
+           ;;
+       esac
+done
+  _PrintDebug "Parsed parameters:"
+  _PrintDebug "SENDALERTEMAIL = $SENDALERTEMAIL"
+  _PrintDebug "VERBOSE = $VERBOSE"
+  _PrintDebug "DEBUG = $DEBUG"
+}
+
+_SendEmail()
+{
+  _PrintDebug "EXECLINE = $EXECLINE"
+  _PrintWarning2Log "Occupied space on the root filesystem has reached the warning level of $FSSIZEWARNING%"
+  _Print2Log "Filesystem occupied space: $FSUSE%"
+  _Print2Log "Please take the necessary actions to free some disk space"
+  if [[ "$SENDALERTEMAIL" == "1" ]]; then
+    _Print2Log "Sending email alert to: $DISTLIST"
+    _PrintDebug "DISTLIST = $DISTLIST"
+    _PrintDebug "EMAILSUBJECT = $EMAILSUBJECT"
+    _PrintDebug "EMAILBODYHEADER = $EMAILBODYHEADER"
+    _PrintDebug "EMAILBODY = $EMAILBODY"
+    ( echo -e "$EMAILBODYHEADER"; echo; echo "Command-line executed: $EXECLINE"; echo; echo "$EMAILBODY" ) | mailx -s "$EMAILSUBJECT" "$DISTLIST"
+  fi
+}
+
+_CreateDirStructure()
+{
+    # Check if Outputdir exist
+    if [[ ! -d "$OUTPUTDIR" ]]; then 
+        _Print2Log "Creating directory: $OUTPUTDIR"
+        mkdir -p "$OUTPUTDIR"
+    fi
+    
+    # Check if logs directory exist
+    if [[ ! -d "$LOGS" ]]; then 
+        _Print2Log "Creating directory: $LOGS"
+        mkdir -p "$LOGS"
+    fi
+}
+
+_GetRootFSUsage()
+{
+# Check FS size
+_Print2Log "Checking filesystem's size"
+FSSIZE="$(df -h | awk '/^rootfs/{print $2}')"
+_Print2Log "Root filesystem's size: $FSSIZE"
+
+# Check used space on root FS
+_Print2Log "Checking used space on root filesystem"
+FSUSED="$(df -h | awk '/^rootfs/{print $3}')"
+_Print2Log "Used space on the root filesystem: $FSUSED"
+
+# Check available space on root FS
+_Print2Log "Checking available space on root filesystem"
+FSAVAIL="$(df -h | awk '/^rootfs/{print $4}')"
+_Print2Log "Available space on the root filesystem: $FSAVAIL"
+
+# Check use percentage of root FS 
+_Print2Log "Checking use percentage of root filesystem"
+FSUSE="$(df -h | awk '/^rootfs/{sub(/.$/,"",$5); print $5}')"
+_Print2Log "Percentage of space used on the root filesystem: $FSUSE%"
+}
