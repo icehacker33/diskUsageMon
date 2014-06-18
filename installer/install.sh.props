@@ -1,0 +1,25 @@
+#!/bin/bash
+#
+# Date:   2014-06-17
+# Author: Daniel Zapico
+# Desc:   diskUsageMon installer
+#_____________________________________________________
+
+# Tool's base directory
+ICETOOLSDIR="/opt/icetools"
+
+# Target installation directory
+TARGETDIR="$ICETOOLSDIR/diskUsageMon"
+
+# Source files
+SOURCES="diskUsageMon.sh diskUsageMon.sh.functions diskUsageMon.sh.exitcodes diskUsageMon.sh.props"
+
+# Temp bash.bashrc file to overwrite the old one if necessary
+TMPBASHRC="/tmp/bash.bashrc.new.$(date +%Y%m%d%H%M%S)"
+
+# Prompt colors
+GREEN="\033[01;32m"
+RED="\033[01;31m"
+NORMAL="\033[01;00m"
+
+

@@ -1,0 +1,190 @@
+#
+# Date:   2014-06-17
+# Author: Daniel Zapico
+# Desc:   diskUsageMon installer functions
+#_____________________________________________________
+
+_CreateTargetDir()
+{
+  # Check if TARGETDIR/script exist
+if [[ -d "$TARGETDIR/script" && "$FORCE" != "1" ]]; then
+  # TARGETDIR exist. Check if it has any files inside already
+  NUMFILES="$(ls -la $TARGETDIR | wc -l)"
+  if [[ "$NUMFILES" > "3" ]]; then
+    echo "Error: $TARGETDIR is not empty. Aborting installation"
+    exit "$TARGETDIRNOTEMPTY"
+  fi
+else
+  if [[ ! -d "$TARGETDIR/script" ]]; then
+    echo -n "Do you want to create $TARGETDIR/script? [Y|n]: "
+    read ANSWER
+    if [[ "$ANSWER" == "n" || "$ANSWER" == "N" ]]; then
+      echo "Installation aborted by the user"
+      exit "$ABORTEDBYUSER"
+    fi
+    ANSWER=""
+    echo -n "Creating $TARGETDIR ... "
+    mkdir -p "$TARGETDIR/script"
+    if [[ "$?" != "0" ]]; then
+      echo -e "[${RED}Fail${NORMAL}]"
+      exit "$CANNOTCREATETARGET"
+    else
+      echo -e "[${GREEN}Ok${NORMAL}]"
+    fi
+  else
+    echo -n "Are you sure you want to overwrite the existing files? [y|N]: "
+    read ANSWER
+    if [[ "$ANSWER" != "y" && "$ANSWER" != "Y" ]]; then
+      echo "Installation aborted by the user"
+      exit "$ABORTEDBYUSER"
+    fi
+    echo "Overwriting existing files"
+  fi
+fi
+}
+
+_CreateICEToolsDirBin()
+{
+  # Create ICETOOLSDIR/bin if it doesn't exist
+  if [[ ! -d "$ICETOOLSDIR/bin" ]]; then
+    mkdir -p "$ICETOOLSDIR/bin"
+  fi
+}
+
+_ConfirmSources()
+{
+# Confirm the source directory exist
+echo -n "Confirm that the source directory exist ... "
+if [[ ! -d "$TOOLDIR/script" ]]; then 
+  echo -e "[${RED}Fail${NORMAL}]"
+  echo "Error: $TOOLDIR/script cannot be found. Nothing to install at all"
+  exit "$NOSOURCEFILES"
+else
+  echo -e "[${GREEN}Ok${NORMAL}]"
+fi  
+    
+# Confirm the source files exist
+echo -n "Checking if files to be installed exist ... "
+NUMFILES="$(ls $TOOLDIR/script | wc -l)"
+if [[ "$NUMFILES" == "0" ]]; then
+  echo -e "[${RED}Fail${NORMAL}]"
+  echo "Error: Directory $TOOLDIR/script is empty. Nothing to install at all"
+  exit "$NOSOURCEFILES"
+else
+  echo -e "[${GREEN}Ok${NORMAL}]"
+fi
+
+# Check if each file exist
+for file in $SOURCES ; do
+  echo -n "   $file ... "
+  if [[ -e "$TOOLDIR/script/$file" ]]; then
+    echo -e "[${GREEN}Ok${NORMAL}]"
+  else
+    echo -e "[${RED}Fail${NORMAL}]"
+    exit "$INCOMPLESOURCEFILES"
+  fi
+done
+}
+
+_InstallFiles()
+{
+# Copy source files to TARGETDIR/script
+cp $TOOLDIR/script/diskUsageMon.sh* $TARGETDIR/script/
+
+# Set permissions
+echo -n "Setting permissions ... "
+chmod 644 $TARGETDIR/script/*
+RET1="$?"
+chmod 755 $TARGETDIR/script/*.sh
+RET2="$?"
+if [[ "$RET1" != "0" || "$RET2" != "0" ]]; then
+  echo -e "[${RED}Fail${NORMAL}]"
+  exit "$CANNOTSETPERMS"
+else
+  echo -e "[${GREEN}Ok${NORMAL}]"
+fi
+}
+
+_UpdateBashrc()
+{
+# Prepare ICETOOLSDIR_PATTERN to be used by AWK
+ICETOOLSDIR_PATTERN="$(echo "$ICETOOLSDIR" | awk '{gsub(/\//,"\\/"); print}')"
+# Change PATH in /etc/bash.bashrc
+echo -n "Verifying / Updating PATH variable in /etc/bash.bashrc ... "
+awk '/^[ ]*PATH=/ && !/'$ICETOOLSDIR_PATTERN'/{PATH=$1; split(PATH,vec,"="); print "PATH=\"'$PATH':'$ICETOOLSDIR/bin'\""; modified="1"}/^[ ]*PATH=.*'$ICETOOLSDIR_PATTERN'/{pathok="1"; print}!/^[ ]*PATH=/{print}END{if(modified == "1" || pathok == "1") exit "0"; exit "1"}' /etc/bash.bashrc > "$TMPBASHRC"
+RET="$?"
+
+if [[ "$RET" != "0" ]]; then
+  echo -e "[${RED}Fail${NORMAL}]"
+  exit "$CANNOTSETPATH"
+fi
+
+# Backup current bash.bashrc file
+cp -p /etc/bash.bashrc /etc/bash.bashrc.bak.$(date +%Y%m%d%H%M%S)
+
+if [[ "$?" != "0" ]]; then
+  echo -e "[${RED}Fail${NORMAL}]"
+  echo "Error: couldn't backup current /etc/bash.bashrc file"
+  rm "$TMPBASHRC"
+  exit "$CANNOTBACKUPBASHRC"
+fi
+
+# Update bash.bashrc
+mv "$TMPBASHRC" /etc/bash.bashrc
+
+if [[ "$?" != "0" ]]; then
+  echo -e "[${RED}Fail${NORMAL}]"
+  exit "$CANNOTUPDATEBASHRC"
+else
+  echo -e "[${GREEN}Ok${NORMAL}]"
+fi
+}
+
+_CreateLinks()
+{
+# Create links in ICETOOLSDIR/bin
+echo -n "Verifying / Creating links in $ICETOOLSDIR/bin ... "
+ln -s $TARGETDIR/script/diskUsageMon.sh $ICETOOLSDIR/bin/$SNAME ?&>/dev/null
+RET1="$?"
+
+ls "$SNAME" &>/dev/null
+RET2="$?"
+
+if [[ "$RET1" != "0" && "$RET2" != "0" ]]; then
+  echo -e "[${RED}Fail${NORMAL}]"
+  exit "$CANNOTCREATELINK"
+else
+  echo -e "[${GREEN}Ok${NORMAL}]"
+fi
+}
+
+_Usage()
+{
+cat << EOF
+Usage: $SNAME [OPTIONS]
+
+OPTIONS:
+  -h show this help
+  -f force installation overwriting any existing files
+EOF
+}
+
+_ParseInputParams()
+{
+while getopts ":hf" OPTION; do
+      case "$OPTION" in
+         h)
+           _Usage
+           exit "$DEFAULTEXITCODE"
+           ;;
+         f)
+	   FORCE="1"
+           ;;
+        *)
+           _Usage
+           exit "$WRONGUSAGE"
+           ;;
+       esac
+done
+}
+
