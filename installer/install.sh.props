@@ -9,7 +9,10 @@
 ICETOOLSDIR="/opt/icetools"
 
 # Target installation directory
-TARGETDIR="$ICETOOLSDIR/diskUsageMon"
+TARGETDIR="$ICETOOLSDIR/tools/diskUsageMon"
+
+# Target script's name
+TSNAME="$(basename ../script/*.sh)"
 
 # Source files
 SOURCES="diskUsageMon.sh diskUsageMon.sh.functions diskUsageMon.sh.exitcodes diskUsageMon.sh.props"

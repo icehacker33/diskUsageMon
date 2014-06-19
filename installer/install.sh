@@ -44,11 +44,17 @@ EXECLINE="$0 $@"
 
 ### MAIN ###
 _ParseInputParams "$@"
-_CreateTargetDir
-_CreateICEToolsDirBin
-_ConfirmSources
-_InstallFiles
-_UpdateBashrc
-_CreateLinks
+if [[ "$UNINSTALL" != "1" ]]; then
+  _InstalldiskUsageMon
+else
+  if [[ "$UNINSTALL" == "1" ]]; then
+    _UninstalldiskUsageMon
+  else
+    echo "Error: not valid operation requested"
+    _Usage
+    exit "$NOTVALIDOP"
+  fi
+fi
+
 exit "$DEFAULTEXITCODE"
 ############
