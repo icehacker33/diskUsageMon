@@ -121,6 +121,15 @@ fi
 _UninstallFiles()
 {
   if [[ -d "$TARGETDIR" ]]; then
+    if [[ "$FORCE" != "1" ]]; then
+      echo -n "Are you sure you want to uninstall $TSNAME? [y|N]: "
+      read ANSWER
+      if [[ "$ANSWER" != "y" && "$ANSWER" != "Y" ]]; then
+        echo "Uninstallation aborted by the user..."
+	exit "$UNINSTALLABORTEDBYUSER"
+      fi
+    fi
+    FORCE="1"
     echo -n "Uninstalling files and removing directories ... "
     rm -r "$TARGETDIR" &>/dev/null
     RET="$?"
@@ -135,6 +144,14 @@ _UninstallFiles()
   fi
  
   if [[ -L "$ICETOOLSDIR/bin/$TSNAME" ]]; then
+    if [[ "$FORCE" != "1" ]]; then
+      echo -n "Are you sure you want to uninstall $TSNAME? [y|N]: "
+      read ANSWER
+      if [[ "$ANSWER" != "y" && "$ANSWER" != "Y" ]]; then
+        echo "Uninstallation aborted by the user..."
+        exit "$UNINSTALLABORTEDBYUSER"
+      fi
+    fi
     echo -n "Removing links ... "
     rm "$ICETOOLSDIR/bin/$TSNAME" &>/dev/null
     RET="$?"
@@ -160,9 +177,8 @@ fi
 ICETOOLSDIR_PATTERN="$(echo "$ICETOOLSDIR" | awk '{gsub(/\//,"\\/"); print}')"
 # Change PATH in /etc/bash.bashrc
 
-echo -n "Verifying / Updating PATH variable in /etc/bash.bashrc ... "
-
 if [[ "$1" == "install" ]]; then
+  echo -n "Verifying / Updating PATH variable in /etc/bash.bashrc ... "
   awk '/^[ ]*PATH=/ && !/'$ICETOOLSDIR_PATTERN'/{
        PATH=$1;
        sub(/"[ ]*$/,"",PATH); 
@@ -184,6 +200,31 @@ if [[ "$1" == "install" ]]; then
   RET="$?"
 else
   if [[ "$1" == "uninstall" ]]; then
+    awk '/^[ ]*PATH=.*'$ICETOOLSDIR_PATTERN'/{
+          ret="1";
+	  exit;
+	}
+	{
+	  ret="0";
+	}
+	END{
+	  exit ret;
+	}' /etc/bash.bashrc
+    RET="$?"
+    if [[ "$RET" == "0" ]]; then
+      echo "PATH variable is correct, no actions needed"
+      exit "$DEFAULTEXITCODE"
+    fi
+
+    if [[ "$FORCE" != "1" ]]; then
+      echo -n "Are you sure you want to uninstall $TSNAME? [y|N]: "
+      read ANSWER
+      if [[ "$ANSWER" != "y" && "$ANSWER" != "Y" ]]; then
+        echo "Uninstallation aborted by the user..."
+        exit "$UNINSTALLABORTEDBYUSER"
+      fi
+    fi
+    echo -n "Verifying / Updating PATH variable in /etc/bash.bashrc ... "
     awk '/^[ ]*PATH=.*'$ICETOOLSDIR_PATTERN'/{
         PATH=$1; 
         gsub(/.*="/,"",PATH); 
