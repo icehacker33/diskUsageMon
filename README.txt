@@ -50,3 +50,5 @@ A cron job example can be seen just below (this should work if used inside /etc/
 
 # Disk usage monitor
 0 3 * * * root /opt/icetools/bin/diskUsageMon.sh -v -a &>/dev/null
+
+Remember to add the /opt/icetools/bin directory to the crontab PATH defined in the first section of the file /etc/crontab file
