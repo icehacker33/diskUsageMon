@@ -255,8 +255,9 @@ fi
 
 # Backup current bash.bashrc file
 cp -p /etc/bash.bashrc /etc/bash.bashrc.bak.$(date +%Y%m%d%H%M%S)
+RET="$?"
 
-if [[ "$?" != "0" ]]; then
+if [[ "$RET" != "0" ]]; then
   echo -e "[${RED}Fail${NORMAL}]"
   echo "Error: couldn't backup current /etc/bash.bashrc file"
   rm "$TMPBASHRC"
@@ -265,8 +266,9 @@ fi
 
 # Update bash.bashrc
 mv "$TMPBASHRC" /etc/bash.bashrc
+RET="$?"
 
-if [[ "$?" != "0" ]]; then
+if [[ "$RET" != "0" ]]; then
   echo -e "[${RED}Fail${NORMAL}]"
   rm "$TMPBASHRC"
   exit "$CANNOTUPDATEBASHRC"
@@ -340,5 +342,9 @@ _InstalldiskUsageMon()
 _UninstalldiskUsageMon()
 {
   _UninstallFiles 
-  _UpdateBashrc "uninstall"
+  # Update the PATH only if there are no tools left using it
+  NUMLINKS="$(ls $ICETOOLSDIR/bin | wc -l)"
+  if [[ "$NUMLINKS" == "0" ]]; then
+    _UpdateBashrc "uninstall"
+  fi
 }
