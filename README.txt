@@ -40,6 +40,7 @@ OPTIONS:
 Customizing diskUsageMon:
 -------------------------
 Inside the script directory it can be found a .props file with a bunch of parameters which can be set as needed in order to customize this tool
+
 How to uninstall:
 -----------------
 To unistall diskUsageMon just execute the install.sh script with the -u switch
